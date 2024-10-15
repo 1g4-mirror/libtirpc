@@ -140,6 +140,8 @@ gssapi/gssapi_ext.h endian.h machine/endian.h])
 AX_PTHREAD
 AC_CHECK_FUNCS([getpeereid getrpcbyname getrpcbynumber setrpcent endrpcent getrpcent])
 
+AC_CHECK_TYPES(struct rpcent,,, [
+      #include <netdb.h>])
 AC_CONFIG_FILES([Makefile src/Makefile man/Makefile doc/Makefile])
 AC_OUTPUT(libtirpc.pc)
 

@@ -1,4 +1,4 @@
-AC_INIT(libtirpc, 1.3.5)
+AC_INIT([libtirpc],[1.3.5])
 AM_INIT_AUTOMAKE([silent-rules])
 AM_SILENT_RULES([yes])
 AC_CONFIG_SRCDIR([src/auth_des.c])
@@ -35,7 +35,7 @@ AC_SUBST([LT_VERSION_INFO])
 AC_CHECK_HEADER([gssapi/gssapi.h], [HAVE_GSSAPI_H=yes], [HAVE_GSSAPI_H=no])
 
 AC_ARG_ENABLE(gssapi,
-	[AC_HELP_STRING([--disable-gssapi], [Disable GSSAPI support @<:@default=no@:>@])],
+	[AS_HELP_STRING([--disable-gssapi],[Disable GSSAPI support @<:@default=no@:>@])],
       [],[enable_gssapi=yes])
 AM_CONDITIONAL(GSS, test "x$enable_gssapi" = xyes)
 
@@ -62,7 +62,7 @@ if test "x$enable_gssapi" = xyes; then
 fi
 
 AC_ARG_ENABLE(authdes,
-	[AC_HELP_STRING([--enable-authdes], [Enable AUTH_DES support @<:@default=no@:>@])],
+	[AS_HELP_STRING([--enable-authdes],[Enable AUTH_DES support @<:@default=no@:>@])],
       [],[enable_authdes=no])
 AM_CONDITIONAL(AUTHDES, test "x$enable_authdes" = xyes)
 if test "x$enable_authdes" != xno; then
@@ -70,7 +70,7 @@ if test "x$enable_authdes" != xno; then
 fi
 
 AC_ARG_ENABLE(ipv6,
-	[AC_HELP_STRING([--disable-ipv6], [Disable IPv6 support @<:@default=no@:>@])],
+	[AS_HELP_STRING([--disable-ipv6],[Disable IPv6 support @<:@default=no@:>@])],
 	[],[enable_ipv6=yes])
 AM_CONDITIONAL(INET6, test "x$enable_ipv6" != xno)
 if test "x$enable_ipv6" != xno; then
@@ -78,7 +78,7 @@ if test "x$enable_ipv6" != xno; then
 fi
 
 AC_ARG_ENABLE(symvers,
-	[AC_HELP_STRING([--disable-symvers], [Disable symbol versioning @<:@default=no@:>@])],
+	[AS_HELP_STRING([--disable-symvers],[Disable symbol versioning @<:@default=no@:>@])],
       [],[enable_symvers=maybe])
 
 if test "x$enable_symvers" = xmaybe; then
@@ -113,63 +113,48 @@ esac
 
 
 AC_MSG_CHECKING(for SOL_IP)
-AC_TRY_COMPILE([#include <netdb.h>], [
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <netdb.h>]], [[
     int ipproto = SOL_IP;
-], [
+]])],[
     AC_MSG_RESULT(yes)
     AC_DEFINE(HAVE_SOL_IP, 1, [Have SOL_IP])
-], [
+],[
     AC_MSG_RESULT(no)
 ])
 
 AC_MSG_CHECKING(for SOL_IPV6)
-AC_TRY_COMPILE([#include <netdb.h>], [
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <netdb.h>]], [[
     int ipproto = SOL_IPV6;
-], [
+]])],[
     AC_MSG_RESULT(yes)
     AC_DEFINE(HAVE_SOL_IPV6, 1, [Have SOL_IPV6])
-], [
+],[
     AC_MSG_RESULT(no)
 ])
 
 AC_MSG_CHECKING(for IPPROTO_IP)
-AC_TRY_COMPILE([#include <netinet/in.h>], [
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <netinet/in.h>]], [[
     int ipproto = IPPROTO_IP;
-], [
+]])],[
     AC_MSG_RESULT(yes)
     AC_DEFINE(HAVE_IPPROTO_IP, 1, [Have IPPROTO_IP])
-], [
+],[
     AC_MSG_RESULT(no)
 ])
 
 AC_MSG_CHECKING(for IPPROTO_IPV6)
-AC_TRY_COMPILE([#include <netinet/in.h>], [
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <netinet/in.h>]], [[
     int ipproto = IPPROTO_IPV6;
-], [
+]])],[
     AC_MSG_RESULT(yes)
     AC_DEFINE(HAVE_IPPROTO_IPV6, 1, [Have IPPROTO_IPV6])
-], [
+],[
     AC_MSG_RESULT(no)
 ])
 AC_MSG_CHECKING([for IPV6_PKTINFO])
-AC_TRY_COMPILE([#include <netdb.h>], [
-  int opt = IPV6_PKTINFO;
-], [
-  AC_MSG_RESULT([yes])
-], [
-AC_TRY_COMPILE([#define __APPLE_USE_RFC_3542
-            #include <netdb.h>], [
-  int opt = IPV6_PKTINFO;
-], [
-  AC_MSG_RESULT([yes with __APPLE_USE_RFC_3542])
-  AC_DEFINE([__APPLE_USE_RFC_3542], [1], [show IPV6_PKTINFO internals on macos])
-], [
-  AC_MSG_RESULT([no])
-])
-])
 
 AC_CONFIG_HEADERS([config.h])
-AC_PROG_LIBTOOL
+LT_INIT
 AC_HEADER_DIRENT
 AC_PREFIX_DEFAULT(/usr)
 AC_CHECK_HEADERS([arpa/inet.h fcntl.h libintl.h limits.h locale.h
@@ -182,6 +167,7 @@ AC_CHECK_FUNCS([getpeereid getrpcbyname getrpcbynumber setrpcent endrpcent getrp
 AC_CHECK_TYPES(struct rpcent,,, [
       #include <netdb.h>])
 AC_CONFIG_FILES([Makefile src/Makefile man/Makefile doc/Makefile])
-AC_OUTPUT(libtirpc.pc)
+AC_CONFIG_FILES([libtirpc.pc])
+AC_OUTPUT
 
 

@@ -503,9 +503,7 @@ getnetconfigent(netid)
 	    break;
 	}
     } while (stringp != NULL);
-    if (ncp == NULL) {
-	free(linep);
-    }
+    free(linep);
     fclose(file);
     return(ncp);
 }

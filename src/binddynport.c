@@ -57,6 +57,75 @@ enum {
 	NPORTS		= ENDPORT - LOWPORT + 1,
 };
 
+int lowport = LOWPORT;
+int endport = ENDPORT;
+int nports = NPORTS;
+
+/*
+ * Parse the first and last local port numbers from
+ *	/proc/sys/net/ipv4/ip_local_port_range.
+ *
+ * @first - the first (low) port in the range
+ * @last - the last (high) port in the range
+ *
+ * Returns 0 on success, and both @first and @last are updated.
+ * Returns -1 on failure, and neither @first nor @last are updated.
+ */
+static int parse_ip_local_port_range(int *first, int *last)
+{
+	int res, new_first, new_last;
+	FILE *fp;
+
+	fp = fopen("/proc/sys/net/ipv4/ip_local_port_range", "r");
+	if (fp == NULL) {
+		(void) syslog(LOG_ERR,
+			"Unable to open open /proc/sys/net/ipv4/ip_local_port_range.");
+		return -1;
+	}
+
+	res = fscanf(fp, "%d %d", &new_first, &new_last);
+	if (res != 2) {
+		(void) syslog(LOG_ERR,
+			"An error occurred while parsing ip_local_port_range.");
+		fclose(fp);
+		return -1;
+	}
+
+	*first = new_first;
+	*last = new_last;
+
+	fclose(fp);
+	return 0;
+}
+
+/*
+ * Try to update our dynamic port range using information from the kernel.
+ *
+ * Returns 0 on success, and lowport, endport, and nports should be the
+ *	intersection of the compiled-in defaults and the values reported
+ *	by /proc/sys/net/ipv4/ip_local_port_range.
+ * Returns -1 on failure, and lowport, endport, and nports retain their
+ *	default values.
+ *
+ * This function is called by __binddynport() before using any of:
+ *	endport, lowport, nports
+ */
+static int update_dynamic_port_range(void)
+{
+	int ret, low, end;
+
+	ret = parse_ip_local_port_range(&low, &end);
+	if (ret < 0)
+		return -1;
+
+	if (lowport < low)
+		lowport = low;
+	if (endport > end)
+		endport = end;
+	nports = endport - lowport + 1;
+	return 0;
+}
+
 /*
  * This function decodes information about given port from provided array and
  * return if port is reserved or not.
@@ -67,8 +136,8 @@ enum {
  * Returns 0 if port is not reserved, non-negative if port is reserved.
  */
 static int is_reserved(char *reserved_ports, int port) {
-	port -= LOWPORT;
-	if (port < 0 || port >= NPORTS)
+	port -= lowport;
+	if (port < 0 || port >= nports)
 		return 0;
 	return reserved_ports[port/(8*sizeof(char))] & 1<<(port%(8*sizeof(char)));
 }
@@ -82,8 +151,8 @@ static int is_reserved(char *reserved_ports, int port) {
  *
  */
 static void set_reserved(char *reserved_ports, int port) {
-	port -= LOWPORT;
-	if (port < 0 || port >= NPORTS)
+	port -= lowport;
+	if (port < 0 || port >= nports)
 		return;
 	reserved_ports[port/(8*sizeof(char))] |= 1<<(port%(8*sizeof(char)));
 }
@@ -193,13 +262,16 @@ int __binddynport(int fd)
 		goto out;
 	}
 
+	if (update_dynamic_port_range() < 0)
+		(void) syslog(LOG_ERR, "Using default port range.");
+
 	if (!seed) {
 		struct timeval tv;
 
 		gettimeofday(&tv, NULL);
 		seed = tv.tv_usec * getpid();
 	}
-	array_size = NPORTS / (8*sizeof(char)) + 1;
+	array_size = nports / (8*sizeof(char)) + 1;
 	reserved_ports = malloc(array_size);
 	if (!reserved_ports) {
 		goto out;
@@ -208,8 +280,8 @@ int __binddynport(int fd)
 	if (parse_reserved_ports(reserved_ports) < 0)
 		goto out;
 
-	port = (rand_r(&seed) % NPORTS) + LOWPORT;
-	for (i = 0; i < NPORTS; ++i) {
+	port = (rand_r(&seed) % nports) + lowport;
+	for (i = 0; i < nports; ++i) {
 		*portp = htons(port);
 		if (!is_reserved(reserved_ports, port++)) {
 			res = bind(fd, sap, salen);
@@ -220,8 +292,8 @@ int __binddynport(int fd)
 			if (errno != EADDRINUSE)
 				break;
 		}
-		if (port > ENDPORT)
-			port = LOWPORT;
+		if (port > endport)
+			port = lowport;
 	}
 
 out:
